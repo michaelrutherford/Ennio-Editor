@@ -1,5 +1,5 @@
 # Ennio Editor
-A bare-bones GTK+ text editor written in Vala.
+A minimalist GTK+ text editor written in Vala.
 
 # TODO
 * Improve error handling.
