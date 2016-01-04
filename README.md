@@ -1,8 +1,6 @@
 # Ennio Editor
 A bare-bones GTK+ text editor written in Vala.
 
-[04/25/15]
-
 # TODO
 * Improve error handling.
 * Create 'Save As' Widget.
