@@ -96,7 +96,7 @@ namespace Ennio {
             dialog.website = "michaelrutherford.github.io";
             dialog.version = "Version: 0.0";
             dialog.copyright = "Copyright © 2015 Michael Rutherford";
-            dialog.license = "Ennio Editor is released under the GNU GPLv3 license.";
+            dialog.license = "Ennio Editor is released under the Apache v2.0 license.";
             dialog.wrap_license = true;
             dialog.present ();
             dialog.response.connect ((response_id) => {
