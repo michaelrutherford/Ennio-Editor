@@ -22,7 +22,6 @@ To run Ennio Editor after compilation, enter the following command into the term
 > ./ennio
 
 # LINKS
-* Vala: https://wiki.gnome.org/Projects/Vala
+* Apache: http://www.apache.org/licenses/LICENSE-2.0.html
 * GTK+: http://www.gtk.org/
-* GPL: http://www.gnu.org/licenses/gpl-3.0.html
-
+* Vala: https://wiki.gnome.org/Projects/Vala
