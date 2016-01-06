@@ -21,12 +21,12 @@ namespace Ennio {
         public static string createfile (TextView tview, Label flabel, Window win) {
             string namef = "";
             var pick = new Gtk.FileChooserDialog("Create", 
-                                        win,
-                                        FileChooserAction.SAVE,
-                                        "_Cancel",
-                                        ResponseType.CANCEL,
-                                        "_Create",                                           
-                                        ResponseType.ACCEPT);
+                                                 win,
+                                                 FileChooserAction.SAVE,
+                                                 "_Cancel",
+                                                 ResponseType.CANCEL,
+                                                 "_Create",                                           
+                                                 ResponseType.ACCEPT);
             if (pick.run () == ResponseType.ACCEPT) {
                 namef = pick.get_filename ();
                 flabel.set_label (namef);
@@ -62,15 +62,15 @@ namespace Ennio {
             return fname;
         }
         public static string openfile (string fname, TextView tview, 
-                                            Label flabel, Window win) {
+                                       Label flabel, Window win) {
             string namef = fname;                
             var pick = new Gtk.FileChooserDialog("Open", 
-                                        win,
-                                        FileChooserAction.OPEN,
-                                        "_Cancel",
-                                        ResponseType.CANCEL,
-                                        "_Open",                                           
-                                        ResponseType.ACCEPT);
+                                                 win,
+                                                 FileChooserAction.OPEN,
+                                                 "_Cancel",
+                                                 ResponseType.CANCEL,
+                                                 "_Open",                                           
+                                                 ResponseType.ACCEPT);
             pick.select_multiple = false;
             if (pick.run () == ResponseType.ACCEPT) {
                 try {
