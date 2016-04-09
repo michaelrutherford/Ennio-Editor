@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Michael Rutherford
+Copyright 2015-2016 Michael Rutherford
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ namespace Ennio {
             dialog.comments = "A bare-bones GTK+ text editor written in Vala.";
             dialog.website = "michaelrutherford.github.io";
             dialog.version = "Version: 0.0";
-            dialog.copyright = "Copyright © 2015 Michael Rutherford";
+            dialog.copyright = "Copyright © 2015-2016 Michael Rutherford";
             dialog.license = "Ennio Editor is released under the Apache v2.0 license.";
             dialog.wrap_license = true;
             dialog.present ();
