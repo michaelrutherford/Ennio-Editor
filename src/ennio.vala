@@ -20,10 +20,13 @@ namespace Ennio {
 		private HeaderBar hbar = new HeaderBar();
 		private Box hbarleft = new Box (Gtk.Orientation.HORIZONTAL, 0);
 		private Box hbarright = new Box (Gtk.Orientation.HORIZONTAL, 0);
+		private Notebook tabs = new Notebook();
 		public Ennio (Application app) {
-			Object (application: app, title: "Unsaved");
+			Object (application: app);
 			set_titlebar(hbar);
 			icon_name = "text-editor";
+            hbar.subtitle = "Ennio Editor";
+            hbar.title = "Unsaved";
 			hbar.show_close_button = true;
 			hbar.pack_start(hbarleft);
 			hbar.pack_end(hbarright);
@@ -36,9 +39,10 @@ namespace Ennio {
             hbarleft.pack_start (newfile, false, false, 0);
             hbarleft.get_style_context().add_class ("linked");
             hbarright.pack_start (save, false, false, 0);
-            this.add (scrolled);
-            var view = new Gtk.TextView ();
-            view.set_wrap_mode (Gtk.WrapMode.NONE);
+            tabs.append_page (scrolled, new Label("Title"));
+            this.add (tabs);
+            var view = new TextView ();
+            view.set_wrap_mode (WrapMode.NONE);
             view.set_indent (2);
             var filefont = new Pango.FontDescription ();
             filefont.set_family ("Monospace");
@@ -46,23 +50,22 @@ namespace Ennio {
             view.override_font (filefont);
             view.buffer.text = "";
             scrolled.add (view);
-            hbar.subtitle = "Ennio Editor";
             this.set_default_size (800, 700);
             this.window_position = WindowPosition.CENTER;
             newfile.clicked.connect (() => {
-                namefile = createfile (view, this);
+                namefile = createfile (view);
             });
             save.clicked.connect (() => {
                 namefile = savefile (namefile, view);
             });
             open.clicked.connect (() => {
-                namefile = openfile (namefile, view, this);
+                namefile = openfile (namefile, view);
             });
 		}
-        public string createfile (TextView tview, Window win) {
+        public string createfile (TextView tview) {
             string namef = "";
             var pick = new Gtk.FileChooserDialog("Create", 
-                                                 win,
+                                                 this,
                                                  FileChooserAction.SAVE,
                                                  "_Cancel",
                                                  ResponseType.CANCEL,
@@ -80,11 +83,11 @@ namespace Ennio {
                     var file_stream = file.create (FileCreateFlags.REPLACE_DESTINATION);
                     var data_stream = new DataOutputStream (file_stream);
                     data_stream.put_string (tview.buffer.text);
-                    pick.destroy ();
                 } catch (Error e) {
                     stderr.printf ("Error %s\n", e.message);
                 }
             }
+            pick.destroy ();
             return namef; 
         }
         public string savefile (string fname, TextView tview) {
@@ -102,10 +105,10 @@ namespace Ennio {
             }
             return fname;
         }
-        public string openfile (string fname, TextView tview, Window win) {
+        public string openfile (string fname, TextView tview) {
             string namef = fname;                
             var pick = new Gtk.FileChooserDialog("Open", 
-                                                 win,
+                                                 this,
                                                  FileChooserAction.OPEN,
                                                  "_Cancel",
                                                  ResponseType.CANCEL,
@@ -122,8 +125,8 @@ namespace Ennio {
                 } catch (Error e) {
                     stderr.printf ("Error: %s\n", e.message);
                 }
-                pick.destroy ();
             }
+            pick.destroy ();
             return namef;
         }
     }
