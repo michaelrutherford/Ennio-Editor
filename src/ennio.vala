@@ -16,51 +16,39 @@
 
 using Gtk;
 namespace Ennio {
-    public class Ennio : ApplicationWindow {
+    public class Window : ApplicationWindow {
 		private HeaderBar hbar = new HeaderBar();
 		private Box hbarleft = new Box (Gtk.Orientation.HORIZONTAL, 0);
 		private Box hbarright = new Box (Gtk.Orientation.HORIZONTAL, 0);
-		private Notebook tabs = new Notebook();
-		public Ennio (Application app) {
+		public Notebook tabs = new Notebook();
+		public Window (Application app) {
 			Object (application: app);
 			set_titlebar(hbar);
-			icon_name = "text-editor";
+			icon_name = "accessories-text-editor";
             hbar.subtitle = "Ennio Editor";
             hbar.title = "Unsaved";
 			hbar.show_close_button = true;
 			hbar.pack_start(hbarleft);
 			hbar.pack_end(hbarright);
             var newfile = new Button.from_icon_name ("tab-new-symbolic", IconSize.BUTTON);
-            var save = new Button.with_label ("Save ");
-            var open = new Button.with_label ("Open ");
-            var scrolled = new ScrolledWindow (null, null);
-            var namefile = "";
+            newfile.action_name = "app.new";
+
+            var save = new Button.with_label ("Save");
+            save.action_name = "app.save";
+
+            var open = new Button.with_label ("Open");
+            open.action_name = "app.open";
+            
             hbarleft.pack_start (open, false, false, 0);
             hbarleft.pack_start (newfile, false, false, 0);
             hbarleft.get_style_context().add_class ("linked");
             hbarright.pack_start (save, false, false, 0);
-            tabs.append_page (scrolled, new Label("Title"));
+
+			tabs.scrollable = true;
+
             this.add (tabs);
-            var view = new TextView ();
-            view.set_wrap_mode (WrapMode.NONE);
-            view.set_indent (2);
-            var filefont = new Pango.FontDescription ();
-            filefont.set_family ("Monospace");
-            filefont.set_size (9250);
-            view.override_font (filefont);
-            view.buffer.text = "";
-            scrolled.add (view);
             this.set_default_size (800, 700);
             this.window_position = WindowPosition.CENTER;
-            newfile.clicked.connect (() => {
-                namefile = createfile (view);
-            });
-            save.clicked.connect (() => {
-                namefile = savefile (namefile, view);
-            });
-            open.clicked.connect (() => {
-                namefile = openfile (namefile, view);
-            });
 		}
         public string createfile (TextView tview) {
             string namef = "";
@@ -105,32 +93,74 @@ namespace Ennio {
             }
             return fname;
         }
-        public string openfile (string fname, TextView tview) {
-            string namef = fname;                
-            var pick = new Gtk.FileChooserDialog("Open", 
-                                                 this,
-                                                 FileChooserAction.OPEN,
-                                                 "_Cancel",
-                                                 ResponseType.CANCEL,
-                                                 "_Open",                                           
-                                                 ResponseType.ACCEPT);
-            pick.select_multiple = false;
-            if (pick.run () == ResponseType.ACCEPT) {
-                try {
-                    string text;
-                    FileUtils.get_contents (pick.get_filename (), out text);
-                    tview.buffer.text = text;
-                    namef = pick.get_filename ();
-                    this.title = namef;
-                } catch (Error e) {
-                    stderr.printf ("Error: %s\n", e.message);
-                }
-            }
-            pick.destroy ();
-            return namef;
-        }
     }
+    public class Document : ScrolledWindow {
+		public TextView text = new TextView();
+		public Document () {
+            text.wrap_mode = WrapMode.NONE;
+            text.indent = 2;
+            text.monospace = true;
+            text.buffer.text = "";
+            add (text);
+		}
+	}
+	public class TabLabel : Box {
+		public signal void close_clicked();
+		private Spinner spinner = new Spinner();
+		public string text {
+			get { return label.label; }
+			set { label.label = value; }
+		}
+		private Label label;
+		public TabLabel(string label_text) {
+			orientation = Gtk.Orientation.HORIZONTAL;
+			spacing = 5;
+
+			pack_start(spinner, false, false, 0);
+	
+			label = new Label(label_text);
+			pack_start(label, true, true, 0);
+		   
+			var button = new Button();
+			button.relief = ReliefStyle.NONE;
+			button.focus_on_click = false;
+			button.add(new Image.from_icon_name("window-close-symbolic", IconSize.MENU));
+			button.clicked.connect(button_clicked);
+			try {
+				var data =  ".button {\n" +
+						"-GtkButton-default-border : 0px;\n" +
+						"-GtkButton-default-outside-border : 0px;\n" +
+						"-GtkButton-inner-border: 0px;\n" +
+						"-GtkWidget-focus-line-width : 0px;\n" +
+						"-GtkWidget-focus-padding : 0px;\n" +
+						"padding: 0px;\n" +
+						"}";
+				var provider = new CssProvider();
+				provider.load_from_data(data);
+				button.get_style_context().add_provider(provider, 600);
+			} catch (Error e) {
+			} finally {
+				pack_start(button, false, false, 0);			   
+				show_all();
+				spinner.visible = false;
+			}
+		}
+		public void button_clicked() {
+			close_clicked();
+		}
+		public void start_working() {
+			spinner.start();
+			spinner.visible = true;
+		}
+		public void stop_working() {
+			spinner.stop();
+			spinner.visible = false;
+		}
+	}
     public class Application : Gtk.Application {
+		public Window current_win {
+			get { return (Window) active_window; }
+		}
 		public Application () {
 			Object(application_id: "io.github.michaelrutherford.Ennio-Editor", flags: ApplicationFlags.FLAGS_NONE);
 		}
@@ -156,14 +186,61 @@ namespace Ennio {
 			quit.activate.connect(this.quit);
 			this.add_action (quit);
 
+			SimpleAction newtab = new SimpleAction("new", null);
+			newtab.activate.connect(this.newtab);
+			this.add_action (newtab);
+
+			SimpleAction openact = new SimpleAction("open", null);
+			openact.activate.connect(openfile);
+			this.add_action (openact);
+
+			SimpleAction saveact = new SimpleAction("save", null);
+			saveact.activate.connect(savefile);
+			this.add_action (saveact);
+
 			var menu = new GLib.Menu ();
 			menu.append ("About", "app.about");
 			menu.append ("Quit", "app.quit");
 			app_menu = menu;
 		}
 		protected override void activate () {
-            var editor = new Ennio (this);
+            var editor = new Window (this);
             editor.show_all();
+            newtab();
+		}
+		public void newtab () {
+			var doc = new Document();
+            var label = new TabLabel("Untitled");
+            current_win.tabs.append_page (doc, label);
+            doc.show_all();
+		}
+		public void savefile () {
+		}
+		public void openfile () {
+            var pick = new Gtk.FileChooserDialog("Open", 
+                                                 current_win,
+                                                 FileChooserAction.OPEN,
+                                                 "_Cancel",
+                                                 ResponseType.CANCEL,
+                                                 "_Open",                                           
+                                                 ResponseType.ACCEPT);
+            pick.select_multiple = false;
+            if (pick.run () == ResponseType.ACCEPT) {
+                try {
+					newtab();
+					((TabLabel) current_win.tabs.get_tab_label(
+						current_win.tabs.get_nth_page(current_win.tabs.get_current_page())
+					)).text = pick.get_filename ();
+                    string text;
+                    FileUtils.get_contents (pick.get_filename (), out text);
+					((Document) current_win.tabs.get_nth_page(
+						current_win.tabs.get_current_page()
+					)).text.buffer.text = text;
+                } catch (Error e) {
+                    stderr.printf ("Error: %s\n", e.message);
+                }
+            }
+            pick.destroy ();
 		}
 	}
 }
