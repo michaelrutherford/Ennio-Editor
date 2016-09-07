@@ -43,9 +43,7 @@ namespace Ennio {
             hbarleft.pack_start (newfile, false, false, 0);
             hbarleft.get_style_context().add_class ("linked");
             hbarright.pack_start (save, false, false, 0);
-
-			tabs.scrollable = true;
-
+            
             this.add (tabs);
             this.set_default_size (800, 700);
             this.window_position = WindowPosition.CENTER;
@@ -94,25 +92,106 @@ namespace Ennio {
             return fname;
         }
     }
+    public class Notebook : Gtk.Notebook {
+		public Document current {
+			get {
+				return (Document) this.get_nth_page(
+					this.get_current_page()
+				);
+			}
+		}
+		public Notebook () {
+			scrollable = true;
+			show_border = false;
+		}
+		public void add_doc(Document doc) {
+			var label = new DocumentLabel("Untitled");
+			label.close_clicked.connect(() => {
+				var pagenum = this.page_num(doc);
+				this.remove_page(pagenum);
+				if (this.get_n_pages() <= 0) {
+					add_doc(new Document(this));
+				}
+			});
+            this.set_current_page(this.append_page (doc, doc.label));
+            this.set_tab_reorderable(doc, true);
+            doc.show_all();
+		}
+	}
     public class Document : ScrolledWindow {
-		public TextView text = new TextView();
-		public Document () {
+		public SourceBuffer buffer = new SourceBuffer(null);
+		public SourceView text;
+		public string filepath;
+		public DocumentLabel label;
+		public Document (Notebook container, string path = "") {
+			text = new SourceView.with_buffer(buffer);
             text.wrap_mode = WrapMode.NONE;
             text.indent = 2;
             text.monospace = true;
             text.buffer.text = "";
+			text.auto_indent = true;
+			text.indent_on_tab = true;
+			text.show_line_numbers = true;
+			text.highlight_current_line = true;
+			text.smart_home_end = SourceSmartHomeEndType.BEFORE;
+			text.auto_indent = true;
+			text.show_right_margin = true;
+			buffer.set_style_scheme(SourceStyleSchemeManager.get_default().get_scheme("cobalt"));
             add (text);
+            filepath = path;
+            label = new DocumentLabel("Untitled");
+			label.close_clicked.connect(() => {
+				var pagenum = container.page_num(this);
+				container.remove_page(pagenum);
+				if (container.get_n_pages() <= 0) {
+					container.add_doc(new Document(container));
+				}
+			});
+			buffer.changed.connect(() => {
+				label.unsaved = true;
+			});
+		}
+		public Document.from_file (Notebook container, File file) {
+			this(container);
+			var lm = new SourceLanguageManager();
+			var language = lm.guess_language(file.get_path(), null);
+			
+			if (language != null) {
+				buffer.language = language;
+				buffer.highlight_syntax = true;
+			} else {
+				buffer.highlight_syntax = false;
+			}
+
+			label = new DocumentLabel(file.get_path());
+			label.close_clicked.connect(() => {
+				var pagenum = container.page_num(this);
+				container.remove_page(pagenum);
+				if (container.get_n_pages() <= 0) {
+					container.add_doc(new Document(container));
+				}
+			});
+
+			var source_file = new SourceFile();
+			source_file.set_location(file);
+			var source_file_loader = new SourceFileLoader(buffer, source_file);
+			source_file_loader.load_async(Priority.DEFAULT, null, null);
 		}
 	}
-	public class TabLabel : Box {
+	public class DocumentLabel : Box {
 		public signal void close_clicked();
 		private Spinner spinner = new Spinner();
 		public string text {
 			get { return label.label; }
 			set { label.label = value; }
 		}
+		public bool unsaved {
+			get { return changed.visible; }
+			set { changed.visible = value; }
+		}
 		private Label label;
-		public TabLabel(string label_text) {
+		private Label changed = new Label("*");
+		public DocumentLabel(string label_text) {
 			orientation = Gtk.Orientation.HORIZONTAL;
 			spacing = 5;
 
@@ -120,7 +199,8 @@ namespace Ennio {
 	
 			label = new Label(label_text);
 			pack_start(label, true, true, 0);
-		   
+			pack_start(changed, true, true, 0);
+			
 			var button = new Button();
 			button.relief = ReliefStyle.NONE;
 			button.focus_on_click = false;
@@ -143,6 +223,7 @@ namespace Ennio {
 				pack_start(button, false, false, 0);			   
 				show_all();
 				spinner.visible = false;
+				changed.visible = false;
 			}
 		}
 		public void button_clicked() {
@@ -209,10 +290,8 @@ namespace Ennio {
             newtab();
 		}
 		public void newtab () {
-			var doc = new Document();
-            var label = new TabLabel("Untitled");
-            current_win.tabs.append_page (doc, label);
-            doc.show_all();
+			var doc = new Document(current_win.tabs);
+            current_win.tabs.add_doc (doc);
 		}
 		public void savefile () {
 		}
@@ -226,19 +305,8 @@ namespace Ennio {
                                                  ResponseType.ACCEPT);
             pick.select_multiple = false;
             if (pick.run () == ResponseType.ACCEPT) {
-                try {
-					newtab();
-					((TabLabel) current_win.tabs.get_tab_label(
-						current_win.tabs.get_nth_page(current_win.tabs.get_current_page())
-					)).text = pick.get_filename ();
-                    string text;
-                    FileUtils.get_contents (pick.get_filename (), out text);
-					((Document) current_win.tabs.get_nth_page(
-						current_win.tabs.get_current_page()
-					)).text.buffer.text = text;
-                } catch (Error e) {
-                    stderr.printf ("Error: %s\n", e.message);
-                }
+				var doc = new Document.from_file(current_win.tabs, pick.get_file());
+				current_win.tabs.add_doc (doc);
             }
             pick.destroy ();
 		}
