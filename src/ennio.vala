@@ -123,6 +123,7 @@ namespace Ennio {
 		public SourceView text;
 		public string filepath;
 		public DocumentLabel label;
+		public SourceFile file;
 		public Document (Notebook container, string path = "") {
 			text = new SourceView.with_buffer(buffer);
             text.wrap_mode = WrapMode.NONE;
@@ -151,10 +152,10 @@ namespace Ennio {
 				label.unsaved = true;
 			});
 		}
-		public Document.from_file (Notebook container, File file) {
+		public Document.from_file (Notebook container, File gfile) {
 			this(container);
 			var lm = new SourceLanguageManager();
-			var language = lm.guess_language(file.get_path(), null);
+			var language = lm.guess_language(gfile.get_path(), null);
 			
 			if (language != null) {
 				buffer.language = language;
@@ -163,7 +164,7 @@ namespace Ennio {
 				buffer.highlight_syntax = false;
 			}
 
-			label = new DocumentLabel(file.get_path());
+			label = new DocumentLabel(gfile.get_path());
 			label.close_clicked.connect(() => {
 				var pagenum = container.page_num(this);
 				container.remove_page(pagenum);
@@ -172,11 +173,19 @@ namespace Ennio {
 				}
 			});
 
-			var source_file = new SourceFile();
-			source_file.set_location(file);
-			var source_file_loader = new SourceFileLoader(buffer, source_file);
+			file = new SourceFile();
+			file.location = gfile;
+			var source_file_loader = new SourceFileLoader(buffer, file);
 			source_file_loader.load_async(Priority.DEFAULT, null, null);
 		}
+		public void save () {
+			var source_file_saver = new SourceFileSaver(buffer, file);
+			label.start_working();
+			buffer.set_modified(false);
+			source_file_saver.save_async(Priority.DEFAULT, null, () => {
+				label.stop_working();
+			});
+   		}
 	}
 	public class DocumentLabel : Box {
 		public signal void close_clicked();
@@ -294,6 +303,8 @@ namespace Ennio {
             current_win.tabs.add_doc (doc);
 		}
 		public void savefile () {
+			current_win.tabs.current.save();
+
 		}
 		public void openfile () {
             var pick = new Gtk.FileChooserDialog("Open", 
