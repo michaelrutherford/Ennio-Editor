@@ -18,8 +18,8 @@ using Gtk;
 namespace Ennio {
     public class Window : ApplicationWindow {
 		private HeaderBar hbar = new HeaderBar();
-		private Box hbarleft = new Box (Gtk.Orientation.HORIZONTAL, 0);
-		private Box hbarright = new Box (Gtk.Orientation.HORIZONTAL, 0);
+		private Box hbarleft = new Box (Orientation.HORIZONTAL, 0);
+		private Box hbarright = new Box (Orientation.HORIZONTAL, 0);
 		public Notebook tabs = new Notebook();
 		private Button save = new Button.with_label ("Save");
 		private Button open = new Button.with_label ("Open");
@@ -120,7 +120,7 @@ namespace Ennio {
 				buffer.highlight_syntax = false;
 			}
 
-			label = new DocumentLabel(gfile.get_path());
+			label = new DocumentLabel.from_file(gfile);
 			label.close_clicked.connect(() => {
 				var pagenum = container.page_num(this);
 				container.remove_page(pagenum);
@@ -132,7 +132,12 @@ namespace Ennio {
 			file = new SourceFile();
 			file.location = gfile;
 			var source_file_loader = new SourceFileLoader(buffer, file);
-			source_file_loader.load_async(Priority.DEFAULT, null, null);
+			label.unsaved = false;
+			label.working = true;
+			source_file_loader.load_async(Priority.DEFAULT, null, () => {
+				label.working = false;
+				label.unsaved = false;
+			});
 		}
 		public void save () {
 			var source_file_saver = new SourceFileSaver(buffer, file);
@@ -151,16 +156,26 @@ namespace Ennio {
 			get { return label.label; }
 			set { label.label = value; }
 		}
+		private bool _unsaved;
 		public bool unsaved {
-			get { return changed.visible; }
-			set { changed.visible = value; }
+			get {
+				return _unsaved;
+			}
+			set {
+				_unsaved = value;
+				label.attributes = new Pango.AttrList();
+				if (value) {
+					label.attributes.change(Pango.attr_style_new(Pango.Style.ITALIC));
+				} else {
+					label.attributes.change(Pango.attr_style_new(Pango.Style.NORMAL));
+				}
+			}
 		}
 		public bool working {
 			get { return spinner.active; }
 			set { spinner.active = value; }
 		}
 		private Label label;
-		private Label changed = new Label("*");
 		public DocumentLabel(string label_text) {
 			orientation = Orientation.HORIZONTAL;
 			spacing = 5;
@@ -170,13 +185,12 @@ namespace Ennio {
 			label.margin_start = 45;
 			
 			pack_start(label, true, true, 0);
-			pack_start(changed, true, true, 0);
 			
 			var button = new Button();
 			button.relief = ReliefStyle.NONE;
 			button.focus_on_click = false;
 			button.add(new Image.from_icon_name("window-close-symbolic", IconSize.MENU));
-			button.clicked.connect(button_clicked);
+			button.clicked.connect(() => { close_clicked(); });
 			try {
 				var data =  ".button {\n" +
 						"-GtkButton-default-border : 0px;\n" +
@@ -194,10 +208,10 @@ namespace Ennio {
 			pack_end(button, false, false, 0);			   
 			pack_end(spinner, false, false, 0);
 			show_all();
-			changed.visible = false;
 		}
-		public void button_clicked() {
-			close_clicked();
+		public DocumentLabel.from_file (File file) {
+			this(file.get_basename());
+			tooltip_text = file.get_path();
 		}
 	}
     public class Application : Gtk.Application {
@@ -211,7 +225,7 @@ namespace Ennio {
 			base.startup();
 			SimpleAction about = new SimpleAction("about", null);
 			about.activate.connect(() => {
-				Gtk.show_about_dialog (
+				show_about_dialog (
 					active_window,
 					"program_name", "Ennio Editor",
 					"comments", "A bare-bones GTK+ text editor written in Vala.",
@@ -260,7 +274,7 @@ namespace Ennio {
 
 		}
 		public void openfile () {
-            var pick = new Gtk.FileChooserDialog("Open", 
+            var pick = new FileChooserDialog("Open", 
                                                  current_win,
                                                  FileChooserAction.OPEN,
                                                  "_Cancel",
