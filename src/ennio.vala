@@ -259,7 +259,17 @@ namespace Ennio {
 			saveact.activate.connect(savefile);
 			this.add_action (saveact);
 
+			SimpleAction dark = new SimpleAction.stateful ("dark", null, new Variant.boolean (false));
+			dark.activate.connect(() => {
+				Variant state = dark.get_state ();
+				bool b = state.get_boolean ();
+				dark.set_state (new Variant.boolean (!b));
+				Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", !b);
+			});
+			this.add_action (dark);
+
 			var menu = new GLib.Menu ();
+			menu.append ("Dark", "app.dark");
 			menu.append ("About", "app.about");
 			menu.append ("Quit", "app.quit");
 			app_menu = menu;
