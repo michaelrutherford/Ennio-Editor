@@ -42,6 +42,10 @@ namespace Ennio {
             hbarleft.pack_start (newfile, false, false, 0);
             hbarleft.get_style_context().add_class ("linked");
             hbarright.pack_start (save, false, false, 0);
+
+			tabs.switch_page.connect((page) => {
+				title = ((DocumentLabel) tabs.get_tab_label(page)).text;
+			});
             
             this.add (tabs);
             this.set_default_size (800, 700);
