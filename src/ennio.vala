@@ -21,6 +21,8 @@ namespace Ennio {
 		private Box hbarleft = new Box (Gtk.Orientation.HORIZONTAL, 0);
 		private Box hbarright = new Box (Gtk.Orientation.HORIZONTAL, 0);
 		public Notebook tabs = new Notebook();
+		private Button save = new Button.with_label ("Save");
+		private Button open = new Button.with_label ("Open");
 		public Window (Application app) {
 			Object (application: app);
 			set_titlebar(hbar);
@@ -33,10 +35,7 @@ namespace Ennio {
             var newfile = new Button.from_icon_name ("tab-new-symbolic", IconSize.BUTTON);
             newfile.action_name = "app.new";
 
-            var save = new Button.with_label ("Save");
             save.action_name = "app.save";
-
-            var open = new Button.with_label ("Open");
             open.action_name = "app.open";
             
             hbarleft.pack_start (open, false, false, 0);
@@ -48,49 +47,6 @@ namespace Ennio {
             this.set_default_size (800, 700);
             this.window_position = WindowPosition.CENTER;
 		}
-        public string createfile (TextView tview) {
-            string namef = "";
-            var pick = new Gtk.FileChooserDialog("Create", 
-                                                 this,
-                                                 FileChooserAction.SAVE,
-                                                 "_Cancel",
-                                                 ResponseType.CANCEL,
-                                                 "_Create",                                           
-                                                 ResponseType.ACCEPT);
-            if (pick.run () == ResponseType.ACCEPT) {
-                namef = pick.get_filename ();
-                this.title = namef;
-                try {
-                    tview.buffer.text = "";
-                    var file = File.new_for_path (namef);
-                    if (file.query_exists ()) {
-                        file.delete ();
-                    }
-                    var file_stream = file.create (FileCreateFlags.REPLACE_DESTINATION);
-                    var data_stream = new DataOutputStream (file_stream);
-                    data_stream.put_string (tview.buffer.text);
-                } catch (Error e) {
-                    stderr.printf ("Error %s\n", e.message);
-                }
-            }
-            pick.destroy ();
-            return namef; 
-        }
-        public string savefile (string fname, TextView tview) {
-            try {
-                var file = File.new_for_path (fname);
-                this.title = fname;
-                if (file.query_exists ()) {
-                    file.delete ();
-                }
-                var file_stream = file.create (FileCreateFlags.NONE);
-                var data_stream = new DataOutputStream (file_stream);
-                data_stream.put_string (tview.buffer.text);
-            } catch (Error e) {
-                stderr.printf ("Error %s\n", e.message);
-            }
-            return fname;
-        }
     }
     public class Notebook : Gtk.Notebook {
 		public Document current {
@@ -180,10 +136,11 @@ namespace Ennio {
 		}
 		public void save () {
 			var source_file_saver = new SourceFileSaver(buffer, file);
-			label.start_working();
+			label.working = true;
+			label.unsaved = false;
 			buffer.set_modified(false);
 			source_file_saver.save_async(Priority.DEFAULT, null, () => {
-				label.stop_working();
+				label.working = false;
 			});
    		}
 	}
@@ -198,15 +155,20 @@ namespace Ennio {
 			get { return changed.visible; }
 			set { changed.visible = value; }
 		}
+		public bool working {
+			get { return spinner.active; }
+			set { spinner.active = value; }
+		}
 		private Label label;
 		private Label changed = new Label("*");
 		public DocumentLabel(string label_text) {
-			orientation = Gtk.Orientation.HORIZONTAL;
+			orientation = Orientation.HORIZONTAL;
 			spacing = 5;
-
-			pack_start(spinner, false, false, 0);
-	
+				
 			label = new Label(label_text);
+			label.expand = true;
+			label.margin_start = 45;
+			
 			pack_start(label, true, true, 0);
 			pack_start(changed, true, true, 0);
 			
@@ -228,23 +190,14 @@ namespace Ennio {
 				provider.load_from_data(data);
 				button.get_style_context().add_provider(provider, 600);
 			} catch (Error e) {
-			} finally {
-				pack_start(button, false, false, 0);			   
-				show_all();
-				spinner.visible = false;
-				changed.visible = false;
 			}
+			pack_end(button, false, false, 0);			   
+			pack_end(spinner, false, false, 0);
+			show_all();
+			changed.visible = false;
 		}
 		public void button_clicked() {
 			close_clicked();
-		}
-		public void start_working() {
-			spinner.start();
-			spinner.visible = true;
-		}
-		public void stop_working() {
-			spinner.stop();
-			spinner.visible = false;
 		}
 	}
     public class Application : Gtk.Application {
