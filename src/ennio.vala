@@ -138,7 +138,7 @@ namespace Ennio {
 			var source_file_loader = new SourceFileLoader(buffer, file);
 			label.unsaved = false;
 			label.working = true;
-			source_file_loader.load_async(Priority.DEFAULT, null, () => {
+			source_file_loader.load_async.begin (Priority.DEFAULT, null, () => {
 				label.working = false;
 				label.unsaved = false;
 			});
@@ -148,7 +148,7 @@ namespace Ennio {
 			label.working = true;
 			label.unsaved = false;
 			buffer.set_modified(false);
-			source_file_saver.save_async(Priority.DEFAULT, null, () => {
+			source_file_saver.save_async.begin (Priority.DEFAULT, null, () => {
 				label.working = false;
 			});
    		}
