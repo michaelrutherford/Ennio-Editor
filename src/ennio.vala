@@ -47,10 +47,10 @@ namespace Ennio {
     public class Document : ScrolledWindow {
 		public SourceBuffer buffer = new SourceBuffer(null);
 		public SourceView text;
-		public string filepath;
 		public DocumentLabel label;
 		public SourceFile file;
-		public Document (Notebook container, string path = "") {
+		public bool untitled = true;
+		public Document (Notebook container) {
 			text = new SourceView.with_buffer(buffer);
             text.wrap_mode = WrapMode.NONE;
             text.indent = 2;
@@ -65,7 +65,6 @@ namespace Ennio {
 			text.show_right_margin = true;
 			buffer.set_style_scheme(SourceStyleSchemeManager.get_default().get_scheme("cobalt"));
             add (text);
-            filepath = path;
             label = new DocumentLabel("Untitled");
 			label.close_clicked.connect(() => {
 				var pagenum = container.page_num(this);
@@ -80,6 +79,7 @@ namespace Ennio {
 		}
 		public Document.from_file (Notebook container, File gfile) {
 			this(container);
+			untitled = false;
 			var lm = new SourceLanguageManager();
 			var language = lm.guess_language(gfile.get_path(), null);
 			
@@ -110,12 +110,40 @@ namespace Ennio {
 			});
 		}
 		public void save () {
+			if (untitled) {
+				var pick = new FileChooserDialog("Save As", 
+                                                 (Window) this.get_toplevel(),
+                                                 FileChooserAction.SAVE,
+                                                 "_Cancel",
+                                                 ResponseType.CANCEL,
+                                                 "_Save",                                           
+                                                 ResponseType.ACCEPT);
+				pick.select_multiple = false;
+				if (pick.run () == ResponseType.ACCEPT) {
+					file = new SourceFile();
+					file.location = pick.get_file();
+					untitled = false;
+					pick.destroy ();
+				} else {
+					pick.destroy ();
+					return;
+				}
+			}
 			var source_file_saver = new SourceFileSaver(buffer, file);
 			label.working = true;
 			label.unsaved = false;
 			buffer.set_modified(false);
 			source_file_saver.save_async.begin (Priority.DEFAULT, null, () => {
 				label.working = false;
+				var lm = new SourceLanguageManager();
+				var language = lm.guess_language(file.location.get_path(), null);
+				
+				if (language != null) {
+					buffer.language = language;
+					buffer.highlight_syntax = true;
+				} else {
+					buffer.highlight_syntax = false;
+				}
 			});
    		}
 	}
