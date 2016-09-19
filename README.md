@@ -13,9 +13,11 @@ A minimalist GTK+ text editor written in Vala.
 # COMPILING
 _Before running anything, ensure that gtk+-3.0, valac, and all of their dependencies are already installed._
 
-In a terminal, navigate to the directory where Ennio.vala resides and run the following command:
+In a terminal, navigate to the src directory run the following command:
 
-> valac --pkg gtk+-3.0 Ennio.vala -o ennio
+```
+make
+```
 
 To run Ennio Editor after compilation, enter the following command into the terminal:
 
