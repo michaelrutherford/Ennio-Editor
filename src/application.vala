@@ -16,7 +16,12 @@ namespace Ennio {
 					active_window,
 					"program_name", "Ennio Editor",
 					"comments", "A bare-bones GTK+ text editor written in Vala.",
-					"website", "michaelrutherford.github.io",
+					"authors", new string[] {
+						"Michael Rutherford",
+						"Zander Brown"
+					},
+					"logo_icon_name", "accessories-text-editor",
+					"website", "http://michaelrutherford.github.io",
 					"version", "Version: 0.0",
 					"copyright", "Copyright © 2015-2016 Michael Rutherford \r\n Copyright © 2016 Zander Brown",
 					"license", "Ennio Editor is released under the Apache v2.0 license.",
